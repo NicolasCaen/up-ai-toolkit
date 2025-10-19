@@ -1,3 +1,16 @@
+## [1.2.0] - 2025-10-19
+
+### Ajouté
+- Metabox « Traduire toute la page » dans l’éditeur: sélection de la langue et traduction de tous les blocs texte via `/upai/v1/translate-post`.
+- Boutons de génération SEO intégrés à côté des champs (icône seule) pour Title et Description.
+
+### Modifié
+- Chargement des icônes via URL propre (suppression du `?ver=...` avant remplacement du chemin) pour éviter les 403.
+- Alignement des champs SEO et des boutons sur `flex-end` pour une meilleure cohérence visuelle.
+
+### Corrigé
+- Fallback d’ouverture de la sidebar pour garantir l’ouverture du bon panneau même si le menu n’est pas monté.
+
 ## [1.1.0] - 2025-10-19
 
 ### Added

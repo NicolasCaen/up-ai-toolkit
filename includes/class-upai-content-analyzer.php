@@ -45,6 +45,101 @@ class UPAI_Content_Analyzer {
     }
 
     /**
+     * Translate all text blocks of a post to a target language
+     */
+    public function translate_post_texts( $post_id, $target_language, $provider_id = null, $options = array() ) {
+        $this->core->log( "Translate whole post to {$target_language} for post {$post_id}" );
+
+        $languages = $this->get_supported_languages();
+        if ( ! isset( $languages[ $target_language ] ) ) {
+            return new WP_Error( 'invalid_language', __( 'Invalid target language', 'up-ai-toolkit' ) );
+        }
+
+        if ( ! $provider_id ) {
+            $provider_id = $this->core->get_default_provider();
+        }
+        $provider_config = $this->core->get_provider( $provider_id );
+        if ( ! $provider_config ) {
+            return new WP_Error( 'no_provider', __( 'No AI provider configured', 'up-ai-toolkit' ) );
+        }
+
+        $text_blocks = $this->get_text_blocks( $post_id );
+        if ( empty( $text_blocks ) ) {
+            return new WP_Error( 'no_text_blocks', __( 'No text blocks found to translate', 'up-ai-toolkit' ) );
+        }
+
+        $language_name = $languages[ $target_language ];
+        $use_context = ! isset( $options['use_context'] ) || (bool) $options['use_context'];
+        $tone_line = '';
+        $global_line = '';
+        if ( $use_context ) {
+            $settings = $this->core->get_settings();
+            $tone = isset( $settings['tone_of_voice'] ) ? trim( $settings['tone_of_voice'] ) : '';
+            $global = isset( $settings['global_instruction'] ) ? trim( wp_strip_all_tags( $settings['global_instruction'] ) ) : '';
+            $tone_line = $tone ? "Preferred tone of voice: {$tone}\n" : '';
+            $global_line = $global ? "Site context: {$global}\n" : '';
+        }
+
+        // Limit blocks to reasonable count/size
+        $max_blocks = 50;
+        if ( count( $text_blocks ) > $max_blocks ) {
+            $text_blocks = array_slice( $text_blocks, 0, $max_blocks );
+        }
+
+        $instructions = sprintf(
+            "Translate the entire article (Gutenberg blocks, including nested blocks) into %s (%s). Maintain meaning, style and formatting intent. %s%s\n",
+            $language_name,
+            $target_language,
+            $tone_line,
+            $global_line
+        );
+        $instructions .= "Return ONLY valid JSON with an array named 'updates'. Each item must be either {\"path\": [numbers and 'inner'], \"text\": string} or {\"index\": number, \"text\": string}. Use 'path' for nested blocks. Do not include any extra commentary.\n\n";
+
+        $blocks_snippet = array();
+        foreach ( $text_blocks as $b ) {
+            $snippet = mb_substr( $b['text'], 0, 800 );
+            $blocks_snippet[] = sprintf( "- path: %s, type: %s, text: \n%s", json_encode( $b['path'] ), $b['type'], $snippet );
+        }
+        $prompt = $instructions . "Blocks:\n" . implode( "\n\n", $blocks_snippet ) . "\n\nJSON schema example: {\"updates\":[{\"path\":[0,\"inner\",1],\"text\":\"Translated text...\"}]}";
+
+        $result = UPAI_AI_Providers::send_request( $provider_config, $prompt, array_merge( array( 'max_tokens' => 5000, 'timeout' => 120 ), $options ) );
+        if ( is_wp_error( $result ) ) {
+            return $result;
+        }
+
+        $json = trim( $result['content'] );
+        if ( preg_match( '/^```(?:json)?\s*([\s\S]*?)```$/m', $json, $mFence ) ) {
+            $json = trim( $mFence[1] );
+        }
+        $decoded = json_decode( $json, true );
+        if ( ! $decoded || ! isset( $decoded['updates'] ) || ! is_array( $decoded['updates'] ) ) {
+            if ( preg_match( '/\{[\s\S]*\}/', $json, $m ) ) {
+                $decoded = json_decode( $m[0], true );
+            }
+        }
+        if ( ! $decoded && preg_match( '/\[[\s\S]*\]/', $json, $mArr ) ) {
+            $arr = json_decode( $mArr[0], true );
+            if ( is_array( $arr ) ) {
+                $decoded = array( 'updates' => $arr );
+            }
+        }
+        if ( ! $decoded || ! isset( $decoded['updates'] ) || ! is_array( $decoded['updates'] ) ) {
+            return new WP_Error( 'invalid_ai_response', __( 'AI did not return a valid JSON updates structure', 'up-ai-toolkit' ) );
+        }
+
+        $apply = $this->apply_bulk_modifications( $post_id, $decoded['updates'] );
+        if ( is_wp_error( $apply ) ) {
+            return $apply;
+        }
+
+        return array(
+            'updated' => count( $decoded['updates'] ),
+            'usage'   => isset( $result['usage'] ) ? $result['usage'] : array(),
+            'model'   => isset( $result['model'] ) ? $result['model'] : '',
+        );
+    }
+
+    /**
      * Get all text-bearing blocks (recursively) with their paths and plain text
      */
     public function get_text_blocks( $post_id ) {

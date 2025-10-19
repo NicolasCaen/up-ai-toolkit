@@ -1,10 +1,17 @@
 # UP AI Toolkit
 
-**Version :** 1.1.0  
+**Version :** 1.2.0  
 **Auteur :** GEHIN Nicolas  
 **Licence :** GPL v2 ou ultérieure
 
 Boîte à outils multi-fournisseurs d’IA pour l’analyse de contenu, la traduction, le résumé et la modification de texte dans l’éditeur Gutenberg de WordPress.
+
+## Nouveautés (1.2.0)
+
+- Metabox « Traduire toute la page »: choisissez la langue cible et traduisez tous les blocs texte de l’article.
+- Boutons de génération SEO (icône seule) placés à droite des champs Title/Description (prévisualisation).
+- Correction de l’URL d’icône (suppression du `?ver=...` avant remplacement) pour éviter les 403.
+- Alignement des champs et boutons SEO sur `flex-end` pour une meilleure cohérence visuelle.
 
 ## Nouveautés (1.1.0)
 

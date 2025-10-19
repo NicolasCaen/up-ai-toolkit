@@ -91,6 +91,34 @@ class UPAI_REST_API {
                 ),
             ),
         ) );
+
+        // Translate whole post
+        register_rest_route( $this->namespace, '/translate-post', array(
+            'methods' => 'POST',
+            'callback' => array( $this, 'translate_post' ),
+            'permission_callback' => array( $this, 'check_permission' ),
+            'args' => array(
+                'post_id' => array(
+                    'required' => true,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint',
+                ),
+                'target_language' => array(
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ),
+                'provider_id' => array(
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ),
+                'use_context' => array(
+                    'required' => false,
+                    'type' => 'boolean',
+                ),
+            ),
+        ) );
         
         // Modify text
         register_rest_route( $this->namespace, '/modify', array(
@@ -273,6 +301,31 @@ class UPAI_REST_API {
             ), 400 );
         }
         
+        return new WP_REST_Response( array(
+            'success' => true,
+            'data' => $result,
+        ), 200 );
+    }
+
+    /**
+     * Translate whole post endpoint
+     */
+    public function translate_post( $request ) {
+        $post_id = $request->get_param( 'post_id' );
+        $target_language = $request->get_param( 'target_language' );
+        $provider_id = $request->get_param( 'provider_id' );
+        $use_context = $request->get_param( 'use_context' );
+        $use_context = is_null( $use_context ) ? true : (bool) $use_context;
+
+        $result = $this->content_analyzer->translate_post_texts( $post_id, $target_language, $provider_id, array( 'use_context' => $use_context ) );
+
+        if ( is_wp_error( $result ) ) {
+            return new WP_REST_Response( array(
+                'success' => false,
+                'error' => $result->get_error_message(),
+            ), 400 );
+        }
+
         return new WP_REST_Response( array(
             'success' => true,
             'data' => $result,

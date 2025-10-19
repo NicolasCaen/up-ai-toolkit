@@ -96,6 +96,14 @@
         var _useState11 = useState(true),
             applyDescOnSave = _useState11[0],
             setApplyDescOnSave = _useState11[1];
+
+        // Whole-page translate
+        var _useState12 = useState('fr'),
+            targetLanguage = _useState12[0],
+            setTargetLanguage = _useState12[1];
+        var _useState13 = useState(false),
+            translateLoading = _useState13[0],
+            setTranslateLoading = _useState13[1];
         
         /**
          * Extract text from selected block
@@ -123,6 +131,30 @@
             var tmp = document.createElement('div');
             tmp.innerHTML = text;
             return tmp.textContent || tmp.innerText || '';
+        };
+
+        // Translate the whole post via REST and refresh editor content
+        var handleTranslateWholePost = function() {
+            if (!postId) {
+                setError('No post ID found. Please save the post first.');
+                return;
+            }
+            if (!targetLanguage) {
+                setError('Please select a target language.');
+                return;
+            }
+            setTranslateLoading(true);
+            makeRequest('translate-post', { post_id: postId, target_language: targetLanguage })
+                .then(function(data) {
+                    setTranslateLoading(false);
+                    try { wp.data.dispatch('core/editor').refreshPost(); } catch(e) {}
+                    alert('Traduction terminée: ' + (data && data.updated ? data.updated + ' blocs' : 'post mis à jour'));
+                })
+                .catch(function(err) {
+                    setTranslateLoading(false);
+                    console.error('Error translating whole post:', err);
+                    setError('Error translating whole post');
+                });
         };
 
         /**
@@ -244,7 +276,8 @@
                                 }
                             }
                             if (scriptSrc) {
-                                var iconUrl = scriptSrc.replace('/assets/js/gutenberg-integration.js', '/assets/images/icon.svg');
+                                var cleanScriptSrc = scriptSrc.split('?')[0];
+                                var iconUrl = cleanScriptSrc.replace('/assets/js/gutenberg-integration.js', '/assets/images/icon.svg');
                                 fetch(iconUrl, { credentials: 'same-origin' })
                                     .then(function(r){ return r.text(); })
                                     .then(function(svg){ btn.innerHTML = svg; })
@@ -285,9 +318,29 @@
                     previewBtn.insertAdjacentElement('afterend', btn);
                     addedBtn = btn;
 
-                    // Inject minimal CSS for predictable icon sizing
+                    // Inject minimal CSS for predictable icon sizing and generate button icon
                     try {
-                        var css = '.upai-quick-toggle svg{width:16px;height:16px;display:block}.upai-quick-toggle{padding:2px;line-height:1}';
+                        var scripts2 = document.getElementsByTagName('script');
+                        var scriptSrc2 = '';
+                        for (var j = 0; j < scripts2.length; j++) {
+                            var sj = scripts2[j];
+                            if (!sj.src) continue;
+                            if (sj.src.indexOf('/wp-content/plugins/up-ai-toolkit/assets/js/gutenberg-integration.js') !== -1) {
+                                scriptSrc2 = sj.src; break;
+                            }
+                        }
+                        var clean2 = scriptSrc2 ? scriptSrc2.split('?')[0] : '';
+                        var baseImg = clean2 ? clean2.replace('/assets/js/gutenberg-integration.js', '/assets/images/') : '';
+                        var genUrl = baseImg ? (baseImg + 'generate.svg') : '';
+                        var css = ''+
+                          '.upai-quick-toggle svg{width:16px;height:16px;display:block}\n'+
+                          '.upai-quick-toggle{padding:2px;line-height:1}\n'+
+                          '.upai-inline-field{display:flex;gap:6px;align-items:flex-end}\n'+
+                          '.upai-inline-field .components-base-control{flex:1 1 auto}\n'+
+                          '.upai-generate-btn{width:30px;height:30px;padding:0;min-width:30px;border:1px solid var(--wp-admin-border-color, #ccd0d4);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;background:#fff;background-size:18px 18px;background-repeat:no-repeat;background-position:center;'+(genUrl?('background-image:url('+genUrl+');'):'')+'}\n'+
+                          '.upai-generate-btn:disabled{opacity:.5}\n'+
+                          '.upai-generate-btn .components-button__content{display:none}'
+                        ;
                         var style = document.createElement('style');
                         style.type = 'text/css';
                         style.appendChild(document.createTextNode(css));
@@ -557,59 +610,79 @@
                     )
                 ),
 
-                // Generate SEO (Title & Meta Description)
+                // Translate whole page
                 el(PanelBody, {
-                    title: 'Generate SEO (Title & Description)',
-                    initialOpen: true
+                    title: 'Traduire toute la page',
+                    initialOpen: false
                 },
                     el(PanelRow, {},
-                        el('p', { style: { fontSize: '13px', color: '#666' } },
-                            'Generate SEO title and meta description based on content, tone of voice and site instruction. They will be saved to the active SEO plugin if detected.'
-                        )
+                        el(SelectControl, {
+                            label: 'Langue cible',
+                            value: targetLanguage,
+                            options: [
+                                { label: 'Français (fr)', value: 'fr' },
+                                { label: 'English (en)', value: 'en' },
+                                { label: 'Español (es)', value: 'es' },
+                                { label: 'Deutsch (de)', value: 'de' },
+                                { label: 'Italiano (it)', value: 'it' },
+                                { label: 'Português (pt)', value: 'pt' },
+                                { label: 'Nederlands (nl)', value: 'nl' },
+                                { label: 'Polski (pl)', value: 'pl' },
+                                { label: 'Русский (ru)', value: 'ru' },
+                                { label: '日本語 (ja)', value: 'ja' },
+                                { label: '中文 (zh)', value: 'zh' },
+                                { label: 'العربية (ar)', value: 'ar' }
+                            ],
+                            onChange: setTargetLanguage
+                        })
                     ),
                     el(PanelRow, {},
                         el(Button, {
-                            isSecondary: true,
-                            isBusy: seoLoading || loading,
-                            disabled: seoLoading || loading,
-                            onClick: handleGenerateSEOTitle
-                        }, seoLoading ? 'Generating...' : 'Generate Title'),
-                        el(Button, {
-                            style: { marginLeft: '8px' },
-                            isSecondary: true,
-                            isBusy: seoLoading || loading,
-                            disabled: seoLoading || loading,
-                            onClick: handleGenerateSEODescription
-                        }, seoLoading ? 'Generating...' : 'Generate Description'),
-                        el(Button, {
-                            style: { marginLeft: '8px' },
                             isPrimary: true,
-                            isBusy: seoLoading || loading,
-                            disabled: seoLoading || loading,
-                            onClick: handleGenerateSEO
-                        }, seoLoading ? 'Generating...' : 'Generate Both')
+                            isBusy: translateLoading || loading,
+                            disabled: translateLoading || loading,
+                            onClick: handleTranslateWholePost
+                        }, translateLoading ? 'Traduction…' : 'Traduire la page')
                     )
                 ),
 
-                // Edit SEO (Preview) Section
+                // Removed separate Generate SEO panel; generation buttons moved next to inputs below
+
+                // SEO (Preview & Generate)
                 el(PanelBody, {
-                    title: 'Edit SEO (Preview)',
+                    title: 'SEO (Prévisualisation)',
                     initialOpen: true
                 },
                     el(PanelRow, {},
-                        el(TextControl, {
-                            label: 'SEO Title (preview)',
-                            value: seoTitlePreview,
-                            onChange: setSeoTitlePreview
-                        })
+                        el('div', { className: 'upai-inline-field' },
+                            el(TextControl, {
+                                label: 'SEO Title (aperçu)',
+                                value: seoTitlePreview,
+                                onChange: setSeoTitlePreview
+                            }),
+                            el('button', {
+                                type: 'button',
+                                className: 'components-button is-compact upai-generate-btn',
+                                onClick: handleGenerateSEOTitle,
+                                'aria-label': 'Générer le Title'
+                            })
+                        )
                     ),
                     el(PanelRow, {},
-                        el(TextareaControl, {
-                            label: 'Meta Description (preview)',
-                            value: seoDescPreview,
-                            onChange: setSeoDescPreview,
-                            rows: 3
-                        })
+                        el('div', { className: 'upai-inline-field' },
+                            el(TextareaControl, {
+                                label: 'Meta Description (aperçu)',
+                                value: seoDescPreview,
+                                onChange: setSeoDescPreview,
+                                rows: 3
+                            }),
+                            el('button', {
+                                type: 'button',
+                                className: 'components-button is-compact upai-generate-btn',
+                                onClick: handleGenerateSEODescription,
+                                'aria-label': 'Générer la Description'
+                            })
+                        )
                     ),
                     el(PanelRow, {},
                         el(ToggleControl, {
