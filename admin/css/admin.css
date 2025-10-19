@@ -1,0 +1,193 @@
+/**
+ * Admin Styles for UP AI Toolkit
+ *
+ * @package UP_AI_Toolkit
+ */
+
+.upai-admin {
+    max-width: 1200px;
+}
+
+.upai-admin-header {
+    margin: 20px 0;
+    padding: 15px 20px;
+    background: #fff;
+    border-left: 4px solid #2271b1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.upai-section {
+    margin: 30px 0;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.upai-section h2 {
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+/* Provider Items */
+.upai-provider-item {
+    margin: 15px 0;
+    border: 1px solid #ddd;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+.upai-provider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: #fff;
+    border-bottom: 1px solid #ddd;
+}
+
+.upai-provider-header h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.upai-provider-type {
+    font-size: 13px;
+    color: #666;
+    font-weight: normal;
+}
+
+.upai-provider-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.upai-provider-body {
+    padding: 20px;
+}
+
+.upai-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    border-radius: 3px;
+    margin-left: 10px;
+}
+
+.upai-badge-primary {
+    background: #2271b1;
+    color: #fff;
+}
+
+.upai-no-providers {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+/* Test Results */
+.upai-test-results {
+    margin: 20px 0;
+}
+
+.upai-test-result {
+    margin: 15px 0;
+    padding: 15px;
+    border-left: 4px solid #ddd;
+    background: #f9f9f9;
+}
+
+.upai-test-result h4 {
+    margin: 0 0 10px 0;
+    font-size: 15px;
+}
+
+.upai-test-success {
+    border-left-color: #46b450;
+    background: #ecf7ed;
+}
+
+.upai-test-success h4 {
+    color: #46b450;
+}
+
+.upai-test-error {
+    border-left-color: #dc3232;
+    background: #f9e8e8;
+}
+
+.upai-test-error h4 {
+    color: #dc3232;
+}
+
+.upai-test-warning {
+    border-left-color: #ffb900;
+    background: #fff8e5;
+}
+
+.upai-test-warning h4 {
+    color: #ffb900;
+}
+
+.upai-test-details {
+    margin-top: 10px;
+    padding: 10px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.upai-test-details pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.upai-test-result-box {
+    margin-top: 15px;
+}
+
+.upai-test-result-box .notice {
+    margin: 0;
+}
+
+.upai-test-result-box pre {
+    background: #f0f0f0;
+    padding: 10px;
+    border-radius: 3px;
+    overflow-x: auto;
+}
+
+.upai-manual-tests {
+    margin-top: 40px;
+}
+
+.upai-manual-test {
+    margin: 30px 0;
+    padding: 20px;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.upai-manual-test h3 {
+    margin-top: 0;
+}
+
+/* Responsive */
+@media (max-width: 782px) {
+    .upai-provider-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .upai-provider-actions {
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+}

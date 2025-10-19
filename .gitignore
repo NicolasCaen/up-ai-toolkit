@@ -1,0 +1,23 @@
+# WordPress
+.DS_Store
+*.log
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build
+dist/
+build/
+
+# Test
+coverage/
+.phpunit.result.cache
