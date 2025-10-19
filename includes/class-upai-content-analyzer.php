@@ -41,6 +41,7 @@ class UPAI_Content_Analyzer {
      */
     public function __construct( $core ) {
         $this->core = $core;
+        // No automatic SEO generation by default; actions are exposed via REST and editor UI button
     }
 
     /**
@@ -86,14 +87,26 @@ class UPAI_Content_Analyzer {
     /**
      * Build a coherent modification prompt across blocks
      */
-    private function build_coherent_prompt( $text_blocks, $user_prompt ) {
+    private function build_coherent_prompt( $text_blocks, $user_prompt, $use_context = true ) {
         // Limit to avoid extreme token usage
         $max_blocks = 50;
         if ( count( $text_blocks ) > $max_blocks ) {
             $text_blocks = array_slice( $text_blocks, 0, $max_blocks );
         }
 
+        // Global context from settings (optional)
+        $tone_line = '';
+        $global_line = '';
+        if ( $use_context ) {
+            $settings = $this->core->get_settings();
+            $tone = isset( $settings['tone_of_voice'] ) ? trim( $settings['tone_of_voice'] ) : '';
+            $global = isset( $settings['global_instruction'] ) ? trim( wp_strip_all_tags( $settings['global_instruction'] ) ) : '';
+            $tone_line = $tone ? "Tone of voice: {$tone}\n" : '';
+            $global_line = $global ? "Site context: {$global}\n" : '';
+        }
+
         $instructions = "You are rewriting the following article composed of Gutenberg blocks (including nested blocks). Maintain global coherence (tone, terminology, flow) across blocks.\n";
+        $instructions .= $tone_line . $global_line;
         $instructions .= "Apply these editing instructions to the whole article: \n" . $user_prompt . "\n\n";
         $instructions .= "Return ONLY valid JSON with an array named 'updates'. Each item must be either {\"path\": [numbers and 'inner'], \"text\": string} or {\"index\": number, \"text\": string}. Prefer using 'path' for nested blocks. Do not include any extra commentary.\n\n";
 
@@ -193,7 +206,8 @@ class UPAI_Content_Analyzer {
             return new WP_Error( 'no_text_blocks', __( 'No text blocks found to modify', 'up-ai-toolkit' ) );
         }
 
-        $prompt = $this->build_coherent_prompt( $text_blocks, $user_prompt );
+        $use_context = ! isset( $options['use_context'] ) || (bool) $options['use_context'];
+        $prompt = $this->build_coherent_prompt( $text_blocks, $user_prompt, $use_context );
         $result = UPAI_AI_Providers::send_request( $provider_config, $prompt, array_merge( array( 'max_tokens' => 5000, 'timeout' => 120 ), $options ) );
 
         if ( is_wp_error( $result ) ) {
@@ -242,6 +256,159 @@ class UPAI_Content_Analyzer {
     public function get_supported_languages() {
         return apply_filters( 'upai_supported_languages', $this->supported_languages );
     }
+
+    /**
+     * Build common SEO prompt context
+     */
+    private function build_seo_context( $post_id ) {
+        $settings = $this->core->get_settings();
+        $site_name = get_bloginfo( 'name' );
+        $tone = isset( $settings['tone_of_voice'] ) ? trim( $settings['tone_of_voice'] ) : '';
+        $global = isset( $settings['global_instruction'] ) ? trim( wp_strip_all_tags( $settings['global_instruction'] ) ) : '';
+        $post = get_post( $post_id );
+        $post_title = $post ? get_the_title( $post ) : '';
+        $content = $this->core->get_post_content( $post_id );
+        return compact( 'settings', 'site_name', 'tone', 'global', 'post_title', 'content' );
+    }
+
+    /**
+     * Generate SEO title (~50-60 chars)
+     */
+    public function generate_seo_title( $post_id, $provider_id = null, $options = array() ) {
+        $this->core->log( "Generating SEO title for post {$post_id}" );
+        $ctx = $this->build_seo_context( $post_id );
+        if ( empty( $ctx['content'] ) && empty( $ctx['post_title'] ) ) {
+            return new WP_Error( 'empty_content', __( 'Nothing to generate SEO title from', 'up-ai-toolkit' ) );
+        }
+        if ( ! $provider_id ) {
+            $provider_id = $this->core->get_default_provider();
+        }
+        $provider_config = $this->core->get_provider( $provider_id );
+        if ( ! $provider_config ) {
+            return new WP_Error( 'no_provider', __( 'No AI provider configured', 'up-ai-toolkit' ) );
+        }
+        $use_context = ! isset( $options['use_context'] ) || (bool) $options['use_context'];
+        $tone_line = '';
+        $global_line = '';
+        if ( $use_context ) {
+            $tone_line = $ctx['tone'] ? "Tone of voice: {$ctx['tone']}\n" : '';
+            $global_line = $ctx['global'] ? "Site context: {$ctx['global']}\n" : '';
+        }
+        $prompt = sprintf(
+            "You are an SEO expert. Create a concise, compelling, click-worthy SEO title for a web page.\n%s%sWebsite: %s\nConstraints: 50-60 characters, include main keyword naturally, avoid brand unless helpful, no ALL CAPS, no quotes. Output only the title, no extra text.\n\nPage title: %s\nExcerpt: %s",
+            $tone_line,
+            $global_line,
+            $ctx['site_name'],
+            mb_substr( $ctx['post_title'], 0, 120 ),
+            mb_substr( $ctx['content'], 0, 1200 )
+        );
+        $result = UPAI_AI_Providers::send_request( $provider_config, $prompt, array_merge( array( 'max_tokens' => 80 ), $options ) );
+        if ( is_wp_error( $result ) ) {
+            return $result;
+        }
+        $title = trim( wp_strip_all_tags( $result['content'] ) );
+        // Post-process length
+        if ( mb_strlen( $title ) > 65 ) {
+            $title = mb_substr( $title, 0, 65 );
+        }
+        return array( 'title' => $title, 'usage' => $result['usage'], 'model' => $result['model'] );
+    }
+
+    /**
+     * Generate SEO meta description (140-160 chars)
+     */
+    public function generate_meta_description( $post_id, $provider_id = null, $options = array() ) {
+        $this->core->log( "Generating meta description for post {$post_id}" );
+        $ctx = $this->build_seo_context( $post_id );
+        if ( empty( $ctx['content'] ) && empty( $ctx['post_title'] ) ) {
+            return new WP_Error( 'empty_content', __( 'Nothing to generate meta description from', 'up-ai-toolkit' ) );
+        }
+        if ( ! $provider_id ) {
+            $provider_id = $this->core->get_default_provider();
+        }
+        $provider_config = $this->core->get_provider( $provider_id );
+        if ( ! $provider_config ) {
+            return new WP_Error( 'no_provider', __( 'No AI provider configured', 'up-ai-toolkit' ) );
+        }
+        $use_context = ! isset( $options['use_context'] ) || (bool) $options['use_context'];
+        $tone_line = '';
+        $global_line = '';
+        if ( $use_context ) {
+            $tone_line = $ctx['tone'] ? "Tone of voice: {$ctx['tone']}\n" : '';
+            $global_line = $ctx['global'] ? "Site context: {$ctx['global']}\n" : '';
+        }
+        $prompt = sprintf(
+            "Write a persuasive, SEO-friendly meta description for the page below.\n%s%sWebsite: %s\nConstraints: 140-160 characters, single sentence, include a value proposition and a soft call-to-action, no quotes. Output only the description.\n\nPage title: %s\nContent: %s",
+            $tone_line,
+            $global_line,
+            $ctx['site_name'],
+            mb_substr( $ctx['post_title'], 0, 160 ),
+            mb_substr( $ctx['content'], 0, 2000 )
+        );
+        $result = UPAI_AI_Providers::send_request( $provider_config, $prompt, array_merge( array( 'max_tokens' => 120 ), $options ) );
+        if ( is_wp_error( $result ) ) {
+            return $result;
+        }
+        $desc = trim( wp_strip_all_tags( $result['content'] ) );
+        if ( mb_strlen( $desc ) > 170 ) {
+            $desc = mb_substr( $desc, 0, 170 );
+        }
+        return array( 'description' => $desc, 'usage' => $result['usage'], 'model' => $result['model'] );
+    }
+
+    /**
+     * Detect active SEO plugin and return a slug
+     */
+    private function detect_seo_plugin() {
+        if ( defined( 'WPSEO_VERSION' ) || class_exists( 'WPSEO_Frontend' ) ) {
+            return 'yoast';
+        }
+        if ( defined( 'RANK_MATH_VERSION' ) || class_exists( '\\RankMath' ) ) {
+            return 'rankmath';
+        }
+        if ( defined( 'SEOPRESS_VERSION' ) || function_exists( 'seopress_init' ) ) {
+            return 'seopress';
+        }
+        return null;
+    }
+
+    /**
+     * Save SEO title to the appropriate meta key depending on the SEO plugin
+     */
+    public function set_seo_title_for_post( $post_id, $title ) {
+        $plugin = $this->detect_seo_plugin();
+        $saved_key = '';
+        if ( $plugin === 'yoast' ) {
+            $saved_key = '_yoast_wpseo_title';
+        } elseif ( $plugin === 'rankmath' ) {
+            $saved_key = 'rank_math_title';
+        } elseif ( $plugin === 'seopress' ) {
+            $saved_key = '_seopress_titles_title';
+        } else {
+            $saved_key = '_upai_seo_title';
+        }
+        update_post_meta( $post_id, $saved_key, wp_kses_post( $title ) );
+        return $saved_key;
+    }
+
+    /**
+     * Save meta description to the appropriate meta key depending on the SEO plugin
+     */
+    public function set_meta_description_for_post( $post_id, $description ) {
+        $plugin = $this->detect_seo_plugin();
+        $saved_key = '';
+        if ( $plugin === 'yoast' ) {
+            $saved_key = '_yoast_wpseo_metadesc';
+        } elseif ( $plugin === 'rankmath' ) {
+            $saved_key = 'rank_math_description';
+        } elseif ( $plugin === 'seopress' ) {
+            $saved_key = '_seopress_titles_desc';
+        } else {
+            $saved_key = '_upai_meta_description';
+        }
+        update_post_meta( $post_id, $saved_key, wp_kses_post( $description ) );
+        return $saved_key;
+    }
     
     /**
      * Generate excerpt/summary for a post
@@ -267,9 +434,21 @@ class UPAI_Content_Analyzer {
         
         // Build prompt
         $max_length = isset( $options['max_length'] ) ? intval( $options['max_length'] ) : 160;
+        $use_context = ! isset( $options['use_context'] ) || (bool) $options['use_context'];
+        $tone_line = '';
+        $global_line = '';
+        if ( $use_context ) {
+            $settings = $this->core->get_settings();
+            $tone = isset( $settings['tone_of_voice'] ) ? trim( $settings['tone_of_voice'] ) : '';
+            $global = isset( $settings['global_instruction'] ) ? trim( wp_strip_all_tags( $settings['global_instruction'] ) ) : '';
+            $tone_line = $tone ? "Tone of voice: {$tone}\n" : '';
+            $global_line = $global ? "Site context: {$global}\n" : '';
+        }
         $prompt = sprintf(
-            "Create a clear, SEO-optimized summary for the following text. The summary should be between 120 and %d characters. Focus on the main topic and make it engaging. Do not include URLs.\n\nText:\n%s",
+            "Create a clear, SEO-optimized summary for the following text. The summary should be between 120 and %d characters. Focus on the main topic and make it engaging. Do not include URLs.\n%s%s\nText:\n%s",
             $max_length,
+            $tone_line,
+            $global_line,
             substr( $content, 0, 3000 ) // Limit content to avoid token limits
         );
         
@@ -325,10 +504,22 @@ class UPAI_Content_Analyzer {
         
         // Build prompt
         $language_name = $languages[ $target_language ];
+        $use_context = ! isset( $options['use_context'] ) || (bool) $options['use_context'];
+        $tone_line = '';
+        $global_line = '';
+        if ( $use_context ) {
+            $settings = $this->core->get_settings();
+            $tone = isset( $settings['tone_of_voice'] ) ? trim( $settings['tone_of_voice'] ) : '';
+            $global = isset( $settings['global_instruction'] ) ? trim( wp_strip_all_tags( $settings['global_instruction'] ) ) : '';
+            $tone_line = $tone ? "Preferred tone of voice: {$tone}\n" : '';
+            $global_line = $global ? "Site context: {$global}\n" : '';
+        }
         $prompt = sprintf(
-            "Translate the following text to %s (%s). Maintain the original tone, style, and formatting. Provide only the translated text without any additional explanation.\n\nText to translate:\n%s",
+            "Translate the following text to %s (%s). Maintain tone, style and intent. If a preferred tone is provided, adapt accordingly. Provide only the translated text.\n%s%s\nText to translate:\n%s",
             $language_name,
             $target_language,
+            $tone_line,
+            $global_line,
             $text
         );
         
@@ -383,9 +574,21 @@ class UPAI_Content_Analyzer {
         }
         
         // Build prompt
+        $use_context = ! isset( $options['use_context'] ) || (bool) $options['use_context'];
+        $tone_line = '';
+        $global_line = '';
+        if ( $use_context ) {
+            $settings = $this->core->get_settings();
+            $tone = isset( $settings['tone_of_voice'] ) ? trim( $settings['tone_of_voice'] ) : '';
+            $global = isset( $settings['global_instruction'] ) ? trim( wp_strip_all_tags( $settings['global_instruction'] ) ) : '';
+            $tone_line = $tone ? "Tone of voice: {$tone}\n" : '';
+            $global_line = $global ? "Site context: {$global}\n" : '';
+        }
         $prompt = sprintf(
-            "%s\n\nOriginal text:\n%s\n\nProvide only the modified text without any additional explanation.",
+            "%s\n%s%s\nOriginal text:\n%s\n\nProvide only the modified text without any additional explanation.",
             $custom_prompt,
+            $tone_line,
+            $global_line,
             $text
         );
         

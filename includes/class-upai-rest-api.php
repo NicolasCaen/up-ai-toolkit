@@ -57,6 +57,10 @@ class UPAI_REST_API {
                     'type' => 'string',
                     'sanitize_callback' => 'sanitize_text_field',
                 ),
+                'use_context' => array(
+                    'required' => false,
+                    'type' => 'boolean',
+                ),
             ),
         ) );
         
@@ -80,6 +84,10 @@ class UPAI_REST_API {
                     'required' => false,
                     'type' => 'string',
                     'sanitize_callback' => 'sanitize_text_field',
+                ),
+                'use_context' => array(
+                    'required' => false,
+                    'type' => 'boolean',
                 ),
             ),
         ) );
@@ -105,6 +113,10 @@ class UPAI_REST_API {
                     'type' => 'string',
                     'sanitize_callback' => 'sanitize_text_field',
                 ),
+                'use_context' => array(
+                    'required' => false,
+                    'type' => 'boolean',
+                ),
             ),
         ) );
 
@@ -128,6 +140,10 @@ class UPAI_REST_API {
                     'required' => false,
                     'type' => 'string',
                     'sanitize_callback' => 'sanitize_text_field',
+                ),
+                'use_context' => array(
+                    'required' => false,
+                    'type' => 'boolean',
                 ),
             ),
         ) );
@@ -195,6 +211,34 @@ class UPAI_REST_API {
             'callback' => array( $this, 'get_providers' ),
             'permission_callback' => array( $this, 'check_permission' ),
         ) );
+
+        // Generate SEO title and meta description
+        register_rest_route( $this->namespace, '/seo-generate', array(
+            'methods' => 'POST',
+            'callback' => array( $this, 'generate_seo' ),
+            'permission_callback' => array( $this, 'check_permission' ),
+            'args' => array(
+                'post_id' => array(
+                    'required' => true,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint',
+                ),
+                'provider_id' => array(
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ),
+                'what' => array(
+                    'required' => false,
+                    'type' => 'string', // 'both' | 'title' | 'description'
+                    'sanitize_callback' => 'sanitize_text_field',
+                ),
+                'use_context' => array(
+                    'required' => false,
+                    'type' => 'boolean',
+                ),
+            ),
+        ) );
     }
     
     /**
@@ -217,8 +261,10 @@ class UPAI_REST_API {
     public function generate_excerpt( $request ) {
         $post_id = $request->get_param( 'post_id' );
         $provider_id = $request->get_param( 'provider_id' );
+        $use_context = $request->get_param( 'use_context' );
+        $use_context = is_null( $use_context ) ? true : (bool) $use_context;
         
-        $result = $this->content_analyzer->generate_excerpt( $post_id, $provider_id );
+        $result = $this->content_analyzer->generate_excerpt( $post_id, $provider_id, array( 'use_context' => $use_context ) );
         
         if ( is_wp_error( $result ) ) {
             return new WP_REST_Response( array(
@@ -240,8 +286,10 @@ class UPAI_REST_API {
         $post_id = $request->get_param( 'post_id' );
         $prompt = $request->get_param( 'prompt' );
         $provider_id = $request->get_param( 'provider_id' );
+        $use_context = $request->get_param( 'use_context' );
+        $use_context = is_null( $use_context ) ? true : (bool) $use_context;
 
-        $result = $this->content_analyzer->modify_post_coherently( $post_id, $prompt, $provider_id );
+        $result = $this->content_analyzer->modify_post_coherently( $post_id, $prompt, $provider_id, array( 'use_context' => $use_context ) );
 
         if ( is_wp_error( $result ) ) {
             return new WP_REST_Response( array(
@@ -263,8 +311,10 @@ class UPAI_REST_API {
         $text = $request->get_param( 'text' );
         $target_language = $request->get_param( 'target_language' );
         $provider_id = $request->get_param( 'provider_id' );
+        $use_context = $request->get_param( 'use_context' );
+        $use_context = is_null( $use_context ) ? true : (bool) $use_context;
         
-        $result = $this->content_analyzer->translate_text( $text, $target_language, $provider_id );
+        $result = $this->content_analyzer->translate_text( $text, $target_language, $provider_id, array( 'use_context' => $use_context ) );
         
         if ( is_wp_error( $result ) ) {
             return new WP_REST_Response( array(
@@ -286,8 +336,10 @@ class UPAI_REST_API {
         $text = $request->get_param( 'text' );
         $prompt = $request->get_param( 'prompt' );
         $provider_id = $request->get_param( 'provider_id' );
+        $use_context = $request->get_param( 'use_context' );
+        $use_context = is_null( $use_context ) ? true : (bool) $use_context;
         
-        $result = $this->content_analyzer->modify_text( $text, $prompt, $provider_id );
+        $result = $this->content_analyzer->modify_text( $text, $prompt, $provider_id, array( 'use_context' => $use_context ) );
         
         if ( is_wp_error( $result ) ) {
             return new WP_REST_Response( array(
@@ -401,5 +453,51 @@ class UPAI_REST_API {
                 'default_provider' => $default_provider,
             ),
         ), 200 );
+    }
+
+    /**
+     * Generate SEO title and/or meta description, then save to appropriate meta keys
+     */
+    public function generate_seo( $request ) {
+        $post_id = $request->get_param( 'post_id' );
+        $provider_id = $request->get_param( 'provider_id' );
+        $what = $request->get_param( 'what' );
+        if ( ! $what ) { $what = 'both'; }
+        $use_context = $request->get_param( 'use_context' );
+        $use_context = is_null( $use_context ) ? true : (bool) $use_context;
+
+        $post = get_post( $post_id );
+        if ( ! $post ) {
+            return new WP_REST_Response( array( 'success' => false, 'error' => __( 'Invalid post ID', 'up-ai-toolkit' ) ), 400 );
+        }
+
+        $data = array();
+        $errors = array();
+
+        if ( $what === 'both' || $what === 'title' ) {
+            $title_res = $this->content_analyzer->generate_seo_title( $post_id, $provider_id, array( 'use_context' => $use_context ) );
+            if ( is_wp_error( $title_res ) ) {
+                $errors['title'] = $title_res->get_error_message();
+            } else {
+                $saved_key = $this->content_analyzer->set_seo_title_for_post( $post_id, $title_res['title'] );
+                $data['title'] = array( 'value' => $title_res['title'], 'meta_key' => $saved_key );
+            }
+        }
+
+        if ( $what === 'both' || $what === 'description' ) {
+            $desc_res = $this->content_analyzer->generate_meta_description( $post_id, $provider_id, array( 'use_context' => $use_context ) );
+            if ( is_wp_error( $desc_res ) ) {
+                $errors['description'] = $desc_res->get_error_message();
+            } else {
+                $saved_key = $this->content_analyzer->set_meta_description_for_post( $post_id, $desc_res['description'] );
+                $data['description'] = array( 'value' => $desc_res['description'], 'meta_key' => $saved_key );
+            }
+        }
+
+        if ( ! empty( $errors ) && empty( $data ) ) {
+            return new WP_REST_Response( array( 'success' => false, 'error' => $errors ), 400 );
+        }
+
+        return new WP_REST_Response( array( 'success' => true, 'data' => $data ), 200 );
     }
 }

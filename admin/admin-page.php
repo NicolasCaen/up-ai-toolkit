@@ -153,6 +153,24 @@ if ( ! defined( 'ABSPATH' ) ) {
                 
                 <table class="form-table">
                     <tr>
+                        <th><?php _e( 'Tone of Voice', 'up-ai-toolkit' ); ?></th>
+                        <td>
+                            <input type="text"
+                                   name="upai_settings[tone_of_voice]"
+                                   value="<?php echo isset( $settings['tone_of_voice'] ) ? esc_attr( $settings['tone_of_voice'] ) : ''; ?>"
+                                   class="regular-text"
+                                   placeholder="<?php esc_attr_e( 'Ex: Professionnel, convivial, expert mais accessible', 'up-ai-toolkit' ); ?>" />
+                            <p class="description"><?php _e( 'Définissez le ton global des textes générés (ex: professionnel, convivial, premium, technique).', 'up-ai-toolkit' ); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><?php _e( 'Global Instruction (site presentation)', 'up-ai-toolkit' ); ?></th>
+                        <td>
+                            <textarea name="upai_settings[global_instruction]" rows="4" class="large-text" placeholder="<?php echo esc_attr__( 'Ex: Nous sommes une agence digitale spécialisée en SEO/SEA pour PME en France. Nos services incluent audit SEO, campagnes Google Ads et création de contenu optimisé. Notre proposition de valeur: des résultats mesurables et un accompagnement humain.', 'up-ai-toolkit' ); ?>"><?php echo isset( $settings['global_instruction'] ) ? esc_textarea( $settings['global_instruction'] ) : ''; ?></textarea>
+                            <p class="description"><?php _e( 'Présentez brièvement le site/entreprise pour guider les générations et assurer la cohérence.', 'up-ai-toolkit' ); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
                         <th><?php _e( 'Test Mode', 'up-ai-toolkit' ); ?></th>
                         <td>
                             <label>

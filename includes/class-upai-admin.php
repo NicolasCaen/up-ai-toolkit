@@ -118,6 +118,13 @@ public function mon_css_icone_svg() {
         $sanitized['default_provider'] = isset( $input['default_provider'] ) ? sanitize_text_field( $input['default_provider'] ) : '';
         $sanitized['test_mode'] = ! empty( $input['test_mode'] );
         $sanitized['log_requests'] = ! empty( $input['log_requests'] );
+        // New: Tone of voice and global instruction
+        if ( isset( $input['tone_of_voice'] ) ) {
+            $sanitized['tone_of_voice'] = sanitize_text_field( $input['tone_of_voice'] );
+        }
+        if ( isset( $input['global_instruction'] ) ) {
+            $sanitized['global_instruction'] = wp_kses_post( $input['global_instruction'] );
+        }
         
         return $sanitized;
     }

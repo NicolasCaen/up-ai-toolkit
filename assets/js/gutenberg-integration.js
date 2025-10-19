@@ -27,6 +27,7 @@
     var TextControl = wp.components.TextControl;
     var TextareaControl = wp.components.TextareaControl;
     var SelectControl = wp.components.SelectControl;
+    var ToggleControl = wp.components.ToggleControl;
     var Spinner = wp.components.Spinner;
     var Notice = wp.components.Notice;
     var useState = wp.element.useState;
@@ -51,6 +52,9 @@
         var _useState = useState(false),
             loading = _useState[0],
             setLoading = _useState[1];
+        var _useStateSeo = useState(false),
+            seoLoading = _useStateSeo[0],
+            setSeoLoading = _useStateSeo[1];
         
         var _useState2 = useState(null),
             error = _useState2[0],
@@ -73,6 +77,25 @@
         var _useState5 = useState(''),
             postPrompt = _useState5[0],
             setPostPrompt = _useState5[1];
+
+        // Use global context (tone + site instruction)
+        var _useState7 = useState(true),
+            useContext = _useState7[0],
+            setUseContext = _useState7[1];
+
+        // SEO previews (do not auto-apply)
+        var _useState8 = useState(''),
+            seoTitlePreview = _useState8[0],
+            setSeoTitlePreview = _useState8[1];
+        var _useState9 = useState(''),
+            seoDescPreview = _useState9[0],
+            setSeoDescPreview = _useState9[1];
+        var _useState10 = useState(true),
+            applyTitleOnSave = _useState10[0],
+            setApplyTitleOnSave = _useState10[1];
+        var _useState11 = useState(true),
+            applyDescOnSave = _useState11[0],
+            setApplyDescOnSave = _useState11[1];
         
         /**
          * Extract text from selected block
@@ -101,6 +124,98 @@
             tmp.innerHTML = text;
             return tmp.textContent || tmp.innerText || '';
         };
+
+        /**
+         * Generate SEO title and meta description and save to SEO plugin meta
+         */
+        var handleGenerateSEO = function() {
+            if (!postId) {
+                setError('No post ID found. Please save the post first.');
+                return;
+            }
+            setSeoLoading(true);
+            makeRequest('seo-generate', { post_id: postId, what: 'both' })
+                .then(function(data) {
+                    setSeoLoading(false);
+                    // Only preview; do not auto-apply to post
+                    if (data && data.title && data.title.value) setSeoTitlePreview(data.title.value);
+                    if (data && data.description && data.description.value) setSeoDescPreview(data.description.value);
+                    var msg = 'SEO generated.';
+                    if (data && data.title && data.description) {
+                        msg = 'SEO generated: title + description';
+                    } else if (data && data.title) {
+                        msg = 'SEO generated: title';
+                    } else if (data && data.description) {
+                        msg = 'SEO generated: description';
+                    }
+                    alert(msg);
+                })
+                .catch(function(err) {
+                    setSeoLoading(false);
+                    console.error('Error generating SEO:', err);
+                });
+        };
+
+        // Separate generators
+        var handleGenerateSEOTitle = function() {
+            if (!postId) {
+                setError('No post ID found. Please save the post first.');
+                return;
+            }
+            setSeoLoading(true);
+            makeRequest('seo-generate', { post_id: postId, what: 'title' })
+                .then(function(data) {
+                    setSeoLoading(false);
+                    if (data && data.title && data.title.value) setSeoTitlePreview(data.title.value);
+                    alert('SEO Title generated');
+                })
+                .catch(function(err) {
+                    setSeoLoading(false);
+                    console.error('Error generating SEO title:', err);
+                });
+        };
+
+        var handleGenerateSEODescription = function() {
+            if (!postId) {
+                setError('No post ID found. Please save the post first.');
+                return;
+            }
+            setSeoLoading(true);
+            makeRequest('seo-generate', { post_id: postId, what: 'description' })
+                .then(function(data) {
+                    setSeoLoading(false);
+                    if (data && data.description && data.description.value) setSeoDescPreview(data.description.value);
+                    alert('Meta Description generated');
+                })
+                .catch(function(err) {
+                    setSeoLoading(false);
+                    console.error('Error generating Meta Description:', err);
+                });
+        };
+
+        // Apply preview to meta right before user saves the post (no auto-save triggered here)
+        useEffect(function() {
+            var unsubscribe = wp.data.subscribe(function() {
+                try {
+                    var isSaving = wp.data.select('core/editor').isSavingPost();
+                    var isAutosaving = wp.data.select('core/editor').isAutosavingPost();
+                    var meta = wp.data.select('core/editor').getEditedPostAttribute('meta') || {};
+                    if (isSaving && !isAutosaving) {
+                        var updates = {};
+                        if (applyTitleOnSave && seoTitlePreview) {
+                            updates['_yoast_wpseo_title'] = seoTitlePreview;
+                        }
+                        if (applyDescOnSave && seoDescPreview) {
+                            updates['_yoast_wpseo_metadesc'] = seoDescPreview;
+                        }
+                        if (Object.keys(updates).length > 0) {
+                            wp.data.dispatch('core/editor').editPost({ meta: Object.assign({}, meta, updates) });
+                        }
+                    }
+                } catch (e) {}
+            });
+            return function() { try { unsubscribe && unsubscribe(); } catch(e) {} };
+        }, [applyTitleOnSave, applyDescOnSave, seoTitlePreview, seoDescPreview]);
 
         /**
          * Modify the whole post coherently
@@ -159,7 +274,7 @@
             setLoading(true);
             setError(null);
             // Attach provider_id if selected
-            var payload = Object.assign({}, data);
+            var payload = Object.assign({}, data, { use_context: !!useContext });
             if (providerId) {
                 payload.provider_id = providerId;
             }
@@ -340,6 +455,88 @@
                             value: providerId,
                             options: providerOptions,
                             onChange: setProviderId
+                        })
+                    ),
+                    el(PanelRow, {},
+                        el(ToggleControl, {
+                            label: 'Use Global Context (tone & site instruction)',
+                            checked: useContext,
+                            onChange: setUseContext
+                        })
+                    ),
+                    el(PanelRow, {},
+                        el('p', { style: { fontSize: '12px', color: useContext ? '#116611' : '#666' } },
+                            useContext ? 'Global context WILL be applied to prompts.' : 'Global context will NOT be applied to prompts.'
+                        )
+                    )
+                ),
+
+                // Generate SEO (Title & Meta Description)
+                el(PanelBody, {
+                    title: 'Generate SEO (Title & Description)',
+                    initialOpen: true
+                },
+                    el(PanelRow, {},
+                        el('p', { style: { fontSize: '13px', color: '#666' } },
+                            'Generate SEO title and meta description based on content, tone of voice and site instruction. They will be saved to the active SEO plugin if detected.'
+                        )
+                    ),
+                    el(PanelRow, {},
+                        el(Button, {
+                            isSecondary: true,
+                            isBusy: seoLoading || loading,
+                            disabled: seoLoading || loading,
+                            onClick: handleGenerateSEOTitle
+                        }, seoLoading ? 'Generating...' : 'Generate Title'),
+                        el(Button, {
+                            style: { marginLeft: '8px' },
+                            isSecondary: true,
+                            isBusy: seoLoading || loading,
+                            disabled: seoLoading || loading,
+                            onClick: handleGenerateSEODescription
+                        }, seoLoading ? 'Generating...' : 'Generate Description'),
+                        el(Button, {
+                            style: { marginLeft: '8px' },
+                            isPrimary: true,
+                            isBusy: seoLoading || loading,
+                            disabled: seoLoading || loading,
+                            onClick: handleGenerateSEO
+                        }, seoLoading ? 'Generating...' : 'Generate Both')
+                    )
+                ),
+
+                // Edit SEO (Preview) Section
+                el(PanelBody, {
+                    title: 'Edit SEO (Preview)',
+                    initialOpen: true
+                },
+                    el(PanelRow, {},
+                        el(TextControl, {
+                            label: 'SEO Title (preview)',
+                            value: seoTitlePreview,
+                            onChange: setSeoTitlePreview
+                        })
+                    ),
+                    el(PanelRow, {},
+                        el(TextareaControl, {
+                            label: 'Meta Description (preview)',
+                            value: seoDescPreview,
+                            onChange: setSeoDescPreview,
+                            rows: 3
+                        })
+                    ),
+                    el(PanelRow, {},
+                        el(ToggleControl, {
+                            label: 'Apply Title to Yoast on Save',
+                            checked: applyTitleOnSave,
+                            onChange: setApplyTitleOnSave
+                        })
+                    ),
+                    el(PanelRow, {},
+                        el(ToggleControl, {
+                            label: 'Apply Description to Yoast on Save',
+                            checked: applyDescOnSave,
+                            onChange: setApplyDescOnSave
                         })
                     )
                 ),
