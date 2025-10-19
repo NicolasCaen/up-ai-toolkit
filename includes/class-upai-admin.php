@@ -27,8 +27,29 @@ class UPAI_Admin {
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
         add_action( 'admin_init', array( $this, 'register_settings' ) );
         add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_gutenberg_scripts' ) );
+        add_action('admin_head', array( $this, 'mon_css_icone_svg' ));
     }
-    
+    /* on remplace l’icône par notre SVG coloré */
+
+public function mon_css_icone_svg() { 
+ // Chemin absolu vers l’icône
+    $icon = plugins_url('../assets/images/icon.svg', __FILE__);
+    ?>
+    <style>
+        /* on vise le <li> de notre menu */
+        #toplevel_page_up-ai-toolkit .wp-menu-image {
+            background-image: url('<?php echo esc_url($icon); ?>') !important;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 20px 20px;
+        }
+        /* on masque l’icône Dashicons d’origine */
+        #toplevel_page_up-ai-toolkit .wp-menu-image::before {
+            content: none !important;
+        }
+    </style>
+    <?php
+}
     /**
      * Add admin menu
      */
