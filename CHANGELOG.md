@@ -2,6 +2,19 @@
 
 All notable changes to UP AI Toolkit will be documented in this file.
 
+## [1.0.1] - 2025-10-19
+
+### Fixed
+- REST auth errors in Gutenberg sidebar by switching to `wp.apiFetch` and adding a fetch fallback with nonce and credentials.
+- Admin provider form validation to ignore hidden template and trim values.
+
+### Improved
+- OpenRouter integration: normalize `auto` to `openrouter/auto`, include `Referer` and `X-Title` headers, and provide clearer error messages for invalid models.
+- Admin “Test Connection” no longer relies on `wpApiSettings`, now uses localized `restUrl`/`restNonce`.
+
+### Changed
+- Bumped plugin version to 1.0.1.
+
 ## [1.0.0] - 2025-01-19
 
 ### Added

@@ -126,6 +126,8 @@ class UPAI_Admin {
         
         wp_localize_script( 'upai-admin', 'upaiAdmin', array(
             'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+            'restUrl' => rest_url( 'upai/v1' ),
+            'restNonce' => wp_create_nonce( 'wp_rest' ),
             'nonce' => wp_create_nonce( 'upai_admin_nonce' ),
             'strings' => array(
                 'confirmDelete' => __( 'Are you sure you want to delete this provider?', 'up-ai-toolkit' ),

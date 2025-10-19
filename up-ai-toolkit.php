@@ -3,7 +3,7 @@
  * Plugin Name: UP AI Toolkit
  * Plugin URI: https://github.com/nicolas-gehin/up-ai-toolkit
  * Description: Multi-AI provider toolkit for content analysis, translation, summarization and text modification in Gutenberg editor.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: GEHIN Nicolas
  * Author URI: https://nicolas-gehin.com
  * License: GPL v2 or later
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants
-define( 'UPAI_VERSION', '1.0.0' );
+define( 'UPAI_VERSION', '1.0.1' );
 define( 'UPAI_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'UPAI_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'UPAI_PLUGIN_FILE', __FILE__ );

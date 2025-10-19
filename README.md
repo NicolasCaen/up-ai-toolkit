@@ -1,10 +1,17 @@
 # UP AI Toolkit
 
-**Version:** 1.0.0  
+**Version:** 1.0.1  
 **Author:** GEHIN Nicolas  
 **License:** GPL v2 or later
 
 Multi-AI provider toolkit for content analysis, translation, summarization and text modification in the WordPress Gutenberg editor.
+
+## What's New (1.0.1)
+
+- **[Auth]** Correction des appels REST dans l’éditeur Gutenberg: utilisation de `wp.apiFetch` + fallback avec nonce et `credentials: 'same-origin'`.
+- **[Admin]** Correction de la validation du formulaire Provider (exclut le template caché, trim des champs).
+- **[OpenRouter]** Normalisation du modèle `auto` en `openrouter/auto`, entêtes `Referer` et `X-Title`, messages d’erreur plus clairs si modèle invalide.
+- **[Admin REST]** Le bouton "Test Connection" n’utilise plus `wpApiSettings`, mais des variables localisées (`restUrl`, `restNonce`).
 
 ## Features
 

@@ -77,15 +77,16 @@
             $button.prop('disabled', true).text('Testing...');
             
             $.ajax({
-                url: wpApiSettings.root + 'upai/v1/test-provider',
+                url: (upaiAdmin.restUrl || (window.wpApiSettings && wpApiSettings.root + 'upai/v1') || '/wp-json/upai/v1') + '/test-provider',
                 type: 'POST',
                 headers: {
-                    'X-WP-Nonce': wpApiSettings.nonce
+                    'X-WP-Nonce': upaiAdmin.restNonce || (window.wpApiSettings && wpApiSettings.nonce) || ''
                 },
                 data: JSON.stringify({
                     provider_id: providerId
                 }),
                 contentType: 'application/json',
+                xhrFields: { withCredentials: true },
                 success: function(response) {
                     if (response.success) {
                         alert(upaiAdmin.strings.testSuccess || 'Test successful!\n\n' + response.data.message + '\n\nResponse: ' + response.data.response);

@@ -63,6 +63,16 @@
         var _useState4 = useState(''),
             targetLanguage = _useState4[0],
             setTargetLanguage = _useState4[1];
+
+        // Provider selection (global for this sidebar session)
+        var _useState6 = useState((upaiGutenberg && upaiGutenberg.defaultProvider) || ''),
+            providerId = _useState6[0],
+            setProviderId = _useState6[1];
+
+        // Whole post modification prompt
+        var _useState5 = useState(''),
+            postPrompt = _useState5[0],
+            setPostPrompt = _useState5[1];
         
         /**
          * Extract text from selected block
@@ -90,6 +100,33 @@
             var tmp = document.createElement('div');
             tmp.innerHTML = text;
             return tmp.textContent || tmp.innerText || '';
+        };
+
+        /**
+         * Modify the whole post coherently
+         */
+        var handleModifyPost = function() {
+            if (!postId) {
+                setError('No post ID found. Please save the post first.');
+                return;
+            }
+            if (!postPrompt) {
+                setError('Please enter a prompt');
+                return;
+            }
+
+            makeRequest('modify-post', {
+                post_id: postId,
+                prompt: postPrompt
+            })
+            .then(function(data) {
+                // After applying changes server-side, refresh blocks in editor
+                wp.data.dispatch('core/editor').refreshPost();
+                alert('Post modified successfully (' + (data.updated || 0) + ' blocks updated).');
+            })
+            .catch(function(err) {
+                console.error('Error modifying whole post:', err);
+            });
         };
         
         /**
@@ -121,13 +158,18 @@
         var makeRequest = function(endpoint, data) {
             setLoading(true);
             setError(null);
+            // Attach provider_id if selected
+            var payload = Object.assign({}, data);
+            if (providerId) {
+                payload.provider_id = providerId;
+            }
 
             // Prefer wp.apiFetch (handles nonce & cookies)
             if (wp.apiFetch) {
                 return wp.apiFetch({
                     path: '/upai/v1/' + endpoint,
                     method: 'POST',
-                    data: data
+                    data: payload
                 })
                 .then(function(result) {
                     setLoading(false);
@@ -153,7 +195,7 @@
                     'X-WP-Nonce': upaiGutenberg.nonce
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify(data)
+                body: JSON.stringify(payload)
             })
             .then(function(response) {
                 return response.json().catch(function(){ return { success: false, error: 'Invalid JSON response' }; });
@@ -258,6 +300,17 @@
         });
         
         languageOptions.unshift({ label: 'Select language...', value: '' });
+
+        // Prepare provider options
+        var providerOptions = [{ label: 'Default provider', value: '' }];
+        try {
+            var providers = upaiGutenberg.providers || {};
+            Object.keys(providers).forEach(function(id) {
+                var p = providers[id] || {};
+                var name = p.name || id;
+                providerOptions.push({ label: name + ' (' + (p.type || 'custom') + ')', value: id });
+            });
+        } catch (e) {}
         
         return el(Fragment, {},
             el(PluginSidebarMoreMenuItem, {
@@ -275,6 +328,21 @@
                     isDismissible: true,
                     onRemove: function() { setError(null); }
                 }, error),
+                
+                // Provider selection
+                el(PanelBody, {
+                    title: 'Provider',
+                    initialOpen: true
+                },
+                    el(PanelRow, {},
+                        el(SelectControl, {
+                            label: 'Choose provider',
+                            value: providerId,
+                            options: providerOptions,
+                            onChange: setProviderId
+                        })
+                    )
+                ),
                 
                 // Generate Excerpt Section
                 el(PanelBody, {
@@ -372,6 +440,36 @@
                             disabled: loading || !selectedBlock || !customPrompt,
                             onClick: handleModify
                         }, loading ? 'Processing...' : 'Modify Text')
+                    )
+                )
+
+                ,
+                // Modify Whole Post Section
+                el(PanelBody, {
+                    title: 'Modify Whole Post (Coherent)',
+                    initialOpen: false
+                },
+                    el(PanelRow, {},
+                        el('p', { style: { fontSize: '13px', color: '#666' } },
+                            'Apply a single prompt to the whole article. The AI will return coherent updates across all text blocks.'
+                        )
+                    ),
+                    el(PanelRow, {},
+                        el(TextareaControl, {
+                            label: 'Prompt for the whole post',
+                            help: 'e.g., "Unify tone to professional and concise. Improve flow and clarity."',
+                            value: postPrompt,
+                            onChange: setPostPrompt,
+                            rows: 4
+                        })
+                    ),
+                    el(PanelRow, {},
+                        el(Button, {
+                            isPrimary: true,
+                            isBusy: loading,
+                            disabled: loading || !postPrompt,
+                            onClick: handleModifyPost
+                        }, loading ? 'Processing...' : 'Modify Whole Post')
                     )
                 )
             )

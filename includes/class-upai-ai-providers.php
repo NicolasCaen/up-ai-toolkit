@@ -48,8 +48,8 @@ class UPAI_AI_Providers {
         'openrouter' => array(
             'name' => 'OpenRouter',
             'api_url' => 'https://openrouter.ai/api/v1/chat/completions',
-            'models' => array( 'auto' ), // OpenRouter supports many models
-            'default_model' => 'auto',
+            'models' => array( 'openrouter/auto' ), // Meta-model; use full IDs for specifics
+            'default_model' => 'openrouter/auto',
             'requires' => array( 'api_key' ),
         ),
     );
@@ -109,6 +109,7 @@ class UPAI_AI_Providers {
         $model = isset( $options['model'] ) ? $options['model'] : $provider_config['model'];
         $temperature = isset( $options['temperature'] ) ? $options['temperature'] : 0.7;
         $max_tokens = isset( $options['max_tokens'] ) ? $options['max_tokens'] : 2000;
+        $timeout = isset( $options['timeout'] ) ? intval( $options['timeout'] ) : 60;
         
         $body = array(
             'model' => $model,
@@ -128,7 +129,7 @@ class UPAI_AI_Providers {
                 'Content-Type' => 'application/json',
             ),
             'body' => wp_json_encode( $body ),
-            'timeout' => 60,
+            'timeout' => $timeout,
         ) );
         
         return self::process_openai_response( $response );
@@ -140,6 +141,7 @@ class UPAI_AI_Providers {
     private static function send_gemini_request( $provider_config, $prompt, $options ) {
         $api_key = $provider_config['api_key'];
         $model = isset( $options['model'] ) ? $options['model'] : $provider_config['model'];
+        $timeout = isset( $options['timeout'] ) ? intval( $options['timeout'] ) : 60;
         
         $api_url = str_replace( '{model}', $model, 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent' );
         $api_url .= '?key=' . $api_key;
@@ -159,7 +161,7 @@ class UPAI_AI_Providers {
                 'Content-Type' => 'application/json',
             ),
             'body' => wp_json_encode( $body ),
-            'timeout' => 60,
+            'timeout' => $timeout,
         ) );
         
         return self::process_gemini_response( $response );
@@ -173,6 +175,7 @@ class UPAI_AI_Providers {
         $model = isset( $options['model'] ) ? $options['model'] : $provider_config['model'];
         $temperature = isset( $options['temperature'] ) ? $options['temperature'] : 0.7;
         $max_tokens = isset( $options['max_tokens'] ) ? $options['max_tokens'] : 2000;
+        $timeout = isset( $options['timeout'] ) ? intval( $options['timeout'] ) : 60;
         
         $body = array(
             'model' => $model,
@@ -192,7 +195,7 @@ class UPAI_AI_Providers {
                 'Content-Type' => 'application/json',
             ),
             'body' => wp_json_encode( $body ),
-            'timeout' => 60,
+            'timeout' => $timeout,
         ) );
         
         return self::process_openai_response( $response ); // Mistral uses OpenAI-compatible format
@@ -205,6 +208,7 @@ class UPAI_AI_Providers {
         $api_key = $provider_config['api_key'];
         $model = isset( $options['model'] ) ? $options['model'] : $provider_config['model'];
         $max_tokens = isset( $options['max_tokens'] ) ? $options['max_tokens'] : 2000;
+        $timeout = isset( $options['timeout'] ) ? intval( $options['timeout'] ) : 60;
         
         $body = array(
             'model' => $model,
@@ -224,7 +228,7 @@ class UPAI_AI_Providers {
                 'Content-Type' => 'application/json',
             ),
             'body' => wp_json_encode( $body ),
-            'timeout' => 60,
+            'timeout' => $timeout,
         ) );
         
         return self::process_anthropic_response( $response );
@@ -236,8 +240,13 @@ class UPAI_AI_Providers {
     private static function send_openrouter_request( $provider_config, $prompt, $options ) {
         $api_key = $provider_config['api_key'];
         $model = isset( $options['model'] ) ? $options['model'] : $provider_config['model'];
+        // Normalize 'auto' to the valid OpenRouter meta-model
+        if ( strtolower( trim( $model ) ) === 'auto' ) {
+            $model = 'openrouter/auto';
+        }
         $temperature = isset( $options['temperature'] ) ? $options['temperature'] : 0.7;
         $max_tokens = isset( $options['max_tokens'] ) ? $options['max_tokens'] : 2000;
+        $timeout = isset( $options['timeout'] ) ? intval( $options['timeout'] ) : 60;
         
         $body = array(
             'model' => $model,
@@ -255,13 +264,28 @@ class UPAI_AI_Providers {
             'headers' => array(
                 'Authorization' => 'Bearer ' . $api_key,
                 'Content-Type' => 'application/json',
-                'HTTP-Referer' => home_url(),
+                'Referer' => home_url(),
+                'X-Title' => get_bloginfo( 'name', 'display' ),
             ),
             'body' => wp_json_encode( $body ),
-            'timeout' => 60,
+            'timeout' => $timeout,
         ) );
         
-        return self::process_openai_response( $response ); // OpenRouter uses OpenAI-compatible format
+        // OpenRouter uses OpenAI-compatible format, but return clearer error if invalid model
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+        $body_raw = wp_remote_retrieve_body( $response );
+        $data = json_decode( $body_raw, true );
+        if ( isset( $data['error'] ) ) {
+            $message = $data['error']['message'] ?? 'API error';
+            if ( stripos( $message, 'model' ) !== false && stripos( $message, 'not' ) !== false ) {
+                $message .= " — Tip: use a full model ID like 'openrouter/auto' or 'deepseek/deepseek-chat'.";
+            }
+            return new WP_Error( 'api_error', $message );
+        }
+        // Fallback to generic OpenAI-compatible handler
+        return self::process_openai_response( $response );
     }
     
     /**

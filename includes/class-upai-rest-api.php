@@ -107,6 +107,30 @@ class UPAI_REST_API {
                 ),
             ),
         ) );
+
+        // Modify whole post coherently
+        register_rest_route( $this->namespace, '/modify-post', array(
+            'methods' => 'POST',
+            'callback' => array( $this, 'modify_post' ),
+            'permission_callback' => array( $this, 'check_permission' ),
+            'args' => array(
+                'post_id' => array(
+                    'required' => true,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint',
+                ),
+                'prompt' => array(
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_textarea_field',
+                ),
+                'provider_id' => array(
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ),
+            ),
+        ) );
         
         // Extract block text (for testing)
         register_rest_route( $this->namespace, '/extract-block', array(
@@ -203,6 +227,29 @@ class UPAI_REST_API {
             ), 400 );
         }
         
+        return new WP_REST_Response( array(
+            'success' => true,
+            'data' => $result,
+        ), 200 );
+    }
+
+    /**
+     * Modify whole post coherently endpoint
+     */
+    public function modify_post( $request ) {
+        $post_id = $request->get_param( 'post_id' );
+        $prompt = $request->get_param( 'prompt' );
+        $provider_id = $request->get_param( 'provider_id' );
+
+        $result = $this->content_analyzer->modify_post_coherently( $post_id, $prompt, $provider_id );
+
+        if ( is_wp_error( $result ) ) {
+            return new WP_REST_Response( array(
+                'success' => false,
+                'error' => $result->get_error_message(),
+            ), 400 );
+        }
+
         return new WP_REST_Response( array(
             'success' => true,
             'data' => $result,
