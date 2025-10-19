@@ -1,3 +1,19 @@
+## [1.1.0] - 2025-10-19
+
+### Added
+- Gutenberg quick-toggle button near Preview to open the plugin sidebar. Icon loaded from `assets/images/icon.svg` (replaceable without code changes).
+- SEO generation controls now include separate buttons: Generate Title, Generate Description, Generate Both.
+- Preview workflow: generated SEO Title/Description fill preview fields, allowing manual edits before saving.
+- Checkboxes to apply Title/Description to Yoast on post save (no automatic post update).
+- Global context toggle (tone of voice + site instruction) moved to Provider panel and applied to all prompts.
+
+### Changed
+- REST endpoints accept `use_context` to include/exclude global context in prompts.
+- Sidebar UI reorganized: Provider panel hosts context toggle; SEO panel focuses on generation + preview.
+
+### Fixed
+- Improved Yoast UI sync: avoid auto-saving; apply metas only on user save; multiple fallbacks to open the correct plugin sidebar panel.
+
 # Changelog
 
 All notable changes to UP AI Toolkit will be documented in this file.

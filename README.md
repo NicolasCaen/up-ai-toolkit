@@ -1,32 +1,40 @@
 # UP AI Toolkit
 
-**Version:** 1.0.1  
-**Author:** GEHIN Nicolas  
-**License:** GPL v2 or later
+**Version :** 1.1.0  
+**Auteur :** GEHIN Nicolas  
+**Licence :** GPL v2 ou ultérieure
 
-Multi-AI provider toolkit for content analysis, translation, summarization and text modification in the WordPress Gutenberg editor.
+Boîte à outils multi-fournisseurs d’IA pour l’analyse de contenu, la traduction, le résumé et la modification de texte dans l’éditeur Gutenberg de WordPress.
 
-## What's New (1.0.1)
+## Nouveautés (1.1.0)
+
+- Bouton d’accès rapide près de “Prévisualiser” pour ouvrir la barre latérale du plugin (icône chargée depuis `assets/images/icon.svg`).
+- Boutons séparés pour la génération SEO (Title, Description, Both) avec champs de prévisualisation modifiables avant enregistrement.
+- Cases à cocher pour appliquer le Title/Description à Yoast uniquement à l’enregistrement (aucune mise à jour automatique).
+- Le toggle Contexte global (tone of voice + instruction du site) est déplacé dans le panneau Provider et s’applique à tous les prompts.
+- Les endpoints REST acceptent `use_context` pour inclure/exclure le contexte global.
+
+## Nouveautés (1.0.1)
 
 - **[Auth]** Correction des appels REST dans l’éditeur Gutenberg: utilisation de `wp.apiFetch` + fallback avec nonce et `credentials: 'same-origin'`.
 - **[Admin]** Correction de la validation du formulaire Provider (exclut le template caché, trim des champs).
 - **[OpenRouter]** Normalisation du modèle `auto` en `openrouter/auto`, entêtes `Referer` et `X-Title`, messages d’erreur plus clairs si modèle invalide.
 - **[Admin REST]** Le bouton "Test Connection" n’utilise plus `wpApiSettings`, mais des variables localisées (`restUrl`, `restNonce`).
 
-## Features
+## Fonctionnalités
 
-### ✨ Multi-AI Provider Support
-Configure and manage multiple AI providers from a single interface:
-- **OpenAI (ChatGPT)** - GPT-4o, GPT-4o-mini, GPT-4-turbo, GPT-3.5-turbo
-- **Google Gemini** - Gemini 2.0 Flash, Gemini 1.5 Pro, Gemini 1.5 Flash
-- **Mistral AI** - Mistral Large, Medium, Small
-- **Anthropic Claude** - Claude 3.5 Sonnet, Claude 3.5 Haiku, Claude 3 Opus
-- **OpenRouter** - Access to many models through a single API
+### ✨ Support multi-fournisseurs d’IA
+Configurez et gérez plusieurs fournisseurs d’IA depuis une interface unique :
+- **OpenAI (ChatGPT)** – GPT-4o, GPT-4o-mini, GPT-4-turbo, GPT-3.5-turbo
+- **Google Gemini** – Gemini 2.0 Flash, Gemini 1.5 Pro, Gemini 1.5 Flash
+- **Mistral AI** – Mistral Large, Medium, Small
+- **Anthropic Claude** – Claude 3.5 Sonnet, Claude 3.5 Haiku, Claude 3 Opus
+- **OpenRouter** – Accès à de nombreux modèles via une API unique
 
-### 📝 Content Analysis & Modification
-- **Generate Excerpt**: Automatically create SEO-optimized excerpts for your posts
-- **Translate**: Translate block content to 12+ languages
-- **Modify Text**: Use custom prompts to rewrite, improve, or transform text
+### 📝 Analyse et modification de contenu
+- **Generate Excerpt** : génère automatiquement des extraits optimisés SEO
+- **Translate** : traduit le contenu des blocs en 12+ langues
+- **Modify Text** : utilise des prompts personnalisés pour réécrire/optimiser le texte
 
 ### 🧪 Testing Framework
 Built-in test suite to validate:
@@ -72,31 +80,31 @@ Full REST API for integration with external tools:
 - **Anthropic**: https://console.anthropic.com/settings/keys
 - **OpenRouter**: https://openrouter.ai/keys
 
-## Usage
+## Utilisation
 
-### In the Gutenberg Editor
+### Dans l’éditeur Gutenberg
 
-1. Open any post or page in the Gutenberg editor
-2. Click the **three dots** (⋮) in the top right corner
-3. Select **UP AI Toolkit** from the menu
+1. Ouvrez un article/une page dans l’éditeur Gutenberg.
+2. Cliquez sur les **trois points** (⋮) en haut à droite ou utilisez le bouton d’accès rapide.
+3. Sélectionnez **UP AI Toolkit**.
 
-A sidebar will appear with three sections:
+Une barre latérale s’ouvre avec plusieurs sections :
 
 #### Generate Excerpt
-- Click **Generate Excerpt** to create an SEO-optimized summary
-- The excerpt will be automatically added to your post
+- Cliquez sur **Generate Excerpt** pour créer un résumé optimisé SEO.
+- L’extrait est ajouté automatiquement à l’article.
 
 #### Translate
-1. Select a block with text content
-2. Choose the **Target Language** from the dropdown
-3. Click **Translate**
-4. The block will be updated with the translated text
+1. Sélectionnez un bloc contenant du texte.
+2. Choisissez la **langue cible**.
+3. Cliquez sur **Translate**.
+4. Le texte du bloc est remplacé par la traduction.
 
 #### Modify Text
-1. Select a block with text content
-2. Enter a custom **Prompt** (e.g., "Make this more concise")
-3. Click **Modify Text**
-4. The block will be updated with the AI-generated text
+1. Sélectionnez un bloc contenant du texte.
+2. Saisissez un **Prompt** personnalisé (ex. « Rendre ce texte plus concis »).
+3. Cliquez sur **Modify Text**.
+4. Le texte du bloc est mis à jour avec la version générée par l’IA.
 
 ### Supported Languages
 
@@ -113,29 +121,29 @@ A sidebar will appear with three sections:
 - 中文 (zh)
 - العربية (ar)
 
-## Testing
+## Tests
 
-If `WP_DEBUG` is enabled, you'll see a **Tests** submenu:
+Si `WP_DEBUG` est activé, un sous-menu **Tests** apparaît :
 
-1. Go to **UP AI Toolkit** > **Tests**
-2. Click **Run All Tests** to validate:
-   - Block parsing functionality
-   - Text extraction from blocks
-   - Text injection into blocks
-   - Provider connectivity
+1. Allez dans **UP AI Toolkit** > **Tests**
+2. Cliquez sur **Run All Tests** pour vérifier :
+   - Le parsing des blocs
+   - L’extraction de texte depuis les blocs
+   - L’injection de texte dans les blocs
+   - La connectivité aux fournisseurs
 
-### Manual API Tests
+### Tests API manuels
 
-The Tests page also provides manual testing tools:
-- **Extract Block Text**: Test text extraction from specific blocks
-- **Inject Text**: Test text injection into blocks
-- **AI Text Modification**: Test AI modification with custom prompts
+La page Tests propose aussi des outils de test manuel :
+- **Extract Block Text** : tester l’extraction de texte d’un bloc
+- **Inject Text** : tester l’injection de texte dans un bloc
+- **AI Text Modification** : tester la modification de texte avec prompt
 
-## REST API Usage
+## Utilisation de l’API REST
 
-### Authentication
+### Authentification
 
-All API endpoints require WordPress REST API authentication via nonce or application passwords.
+Tous les endpoints nécessitent l’authentification REST WordPress (nonce ou application passwords).
 
 ### Example: Translate Text
 
@@ -174,7 +182,7 @@ curl -X POST 'https://yoursite.com/wp-json/upai/v1/modify' \
 
 ## Hooks & Filters
 
-### Filters
+### Filtres
 
 #### `upai_supported_languages`
 Modify the list of supported translation languages.
@@ -215,7 +223,7 @@ add_filter('upai_modify_prompt', function($prompt, $text, $custom_prompt) {
 
 ## Architecture
 
-### File Structure
+### Structure des fichiers
 
 ```
 up-ai-toolkit/
@@ -237,73 +245,73 @@ up-ai-toolkit/
 └── README.md
 ```
 
-### Class Responsibilities
+### Rôles des classes
 
-- **UPAI_Core**: Settings management, content parsing
-- **UPAI_Admin**: Admin interface, script enqueuing
-- **UPAI_AI_Providers**: Multi-provider API communication
-- **UPAI_Content_Analyzer**: Text analysis and modification logic
-- **UPAI_REST_API**: REST API endpoints
-- **UPAI_Tests**: Automated testing functions
+- **UPAI_Core** : gestion des réglages, parsing de contenu
+- **UPAI_Admin** : interface d’admin, enqueue des scripts
+- **UPAI_AI_Providers** : communication API multi-fournisseurs
+- **UPAI_Content_Analyzer** : logique d’analyse et de modification de texte
+- **UPAI_REST_API** : endpoints REST
+- **UPAI_Tests** : tests automatisés
 
-## Requirements
+## Prérequis
 
 - WordPress 5.8+
 - PHP 7.4+
-- Gutenberg editor enabled
-- At least one configured AI provider
+- Éditeur Gutenberg activé
+- Au moins un fournisseur d’IA configuré
 
-## Security
+## Sécurité
 
-- API keys are stored in the WordPress database
-- All REST endpoints require authentication
-- Input sanitization on all user inputs
-- Nonce verification for admin actions
+- Les clés API sont stockées dans la base WordPress
+- Tous les endpoints REST nécessitent une authentification
+- Assainissement des entrées utilisateurs
+- Vérification de nonce pour les actions admin
 
-## Future Features (Roadmap)
+## Fonctionnalités futures (Feuille de route)
 
-- ✅ Multi-AI provider support
-- ✅ Content analysis functions
-- ✅ Gutenberg integration
-- ✅ REST API
-- ✅ Testing framework
-- 🔄 Bulk content generation via REST API
-- 🔄 Page generation from templates
-- 🔄 Content scheduling
-- 🔄 Analytics & usage tracking
+- ✅ Support multi-fournisseurs d’IA
+- ✅ Fonctions d’analyse de contenu
+- ✅ Intégration Gutenberg
+- ✅ API REST
+- ✅ Cadre de tests
+- 🔄 Génération de contenu en masse via REST
+- 🔄 Génération de pages depuis des templates
+- 🔄 Planification de contenu
+- 🔄 Analytics & suivi d’usage
 
-## Troubleshooting
+## Dépannage
 
-### "No AI providers configured" error
-- Go to Settings and add at least one AI provider with a valid API key
+### Erreur « No AI providers configured »
+- Allez dans les réglages et ajoutez au moins un fournisseur avec une clé valide
 
-### Gutenberg sidebar not showing
-- Make sure the plugin is activated
-- Try refreshing the editor page
-- Check browser console for JavaScript errors
+### La sidebar Gutenberg n’apparaît pas
+- Assurez-vous que le plugin est activé
+- Rafraîchissez la page de l’éditeur
+- Consultez la console du navigateur pour des erreurs JS
 
-### API request fails
-- Verify your API key is correct
-- Check if you have sufficient credits/quota with the provider
-- Enable "Log Requests" in settings and check debug.log
+### L’appel API échoue
+- Vérifiez votre clé API
+- Vérifiez votre crédit/quota chez le fournisseur
+- Activez « Log Requests » dans les réglages et consultez `debug.log`
 
-### Translation not working
-- Ensure you've selected a block with text content
-- Verify the target language is supported
-- Check that your AI provider supports the selected model
+### La traduction ne fonctionne pas
+- Sélectionnez un bloc contenant du texte
+- Vérifiez que la langue cible est supportée
+- Vérifiez que le modèle choisi la supporte
 
 ## Support
 
-For issues, questions, or feature requests:
-- GitHub: [github.com/nicolas-gehin/up-ai-toolkit](https://github.com/nicolas-gehin/up-ai-toolkit)
-- Email: contact@nicolas-gehin.com
+Pour les problèmes, questions ou demandes de fonctionnalités :
+- GitHub : [github.com/nicolas-gehin/up-ai-toolkit](https://github.com/nicolas-gehin/up-ai-toolkit)
+- Email : contact@nicolas-gehin.com
 
-## License
+## Licence
 
-GPL v2 or later
+GPL v2 ou ultérieure
 
-## Credits
+## Crédits
 
-Developed by **GEHIN Nicolas**
+Développé par **GEHIN Nicolas**
 
-Inspired by AI Engine plugin architecture and best practices.
+Inspiré des bonnes pratiques et de l’architecture du plugin AI Engine.

@@ -217,6 +217,92 @@
             return function() { try { unsubscribe && unsubscribe(); } catch(e) {} };
         }, [applyTitleOnSave, applyDescOnSave, seoTitlePreview, seoDescPreview]);
 
+        // Add a small icon button next to the Preview dropdown to toggle our sidebar
+        useEffect(function() {
+            var addedBtn = null;
+            var addedStyle = null;
+            var interval = setInterval(function() {
+                try {
+                    var previewBtn = document.querySelector('button.editor-preview-dropdown__toggle');
+                    if (!previewBtn || addedBtn) return;
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'components-button is-compact has-icon upai-quick-toggle';
+                    btn.setAttribute('aria-label', 'UP AI Toolkit');
+                    btn.style.marginLeft = '6px';
+                    // Resolve icon.svg URL based on this script tag src
+                    (function() {
+                        try {
+                            var scripts = document.getElementsByTagName('script');
+                            var scriptSrc = '';
+                            for (var i = 0; i < scripts.length; i++) {
+                                var s = scripts[i];
+                                if (!s.src) continue;
+                                if (s.src.indexOf('/wp-content/plugins/up-ai-toolkit/assets/js/gutenberg-integration.js') !== -1) {
+                                    scriptSrc = s.src;
+                                    break;
+                                }
+                            }
+                            if (scriptSrc) {
+                                var iconUrl = scriptSrc.replace('/assets/js/gutenberg-integration.js', '/assets/images/icon.svg');
+                                fetch(iconUrl, { credentials: 'same-origin' })
+                                    .then(function(r){ return r.text(); })
+                                    .then(function(svg){ btn.innerHTML = svg; })
+                                    .catch(function(){
+                                        btn.innerHTML = '\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">\n  <path d="M12 2l2.09 6.26H20l-5.17 3.76L16.18 18 12 14.9 7.82 18l1.35-5.98L4 8.26h5.91L12 2z" fill="currentColor"/>\n</svg>';
+                                    });
+                            } else {
+                                btn.innerHTML = '\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">\n  <path d="M12 2l2.09 6.26H20l-5.17 3.76L16.18 18 12 14.9 7.82 18l1.35-5.98L4 8.26h5.91L12 2z" fill="currentColor"/>\n</svg>';
+                            }
+                        } catch (e) {
+                            btn.innerHTML = '\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">\n  <path d="M12 2l2.09 6.26H20l-5.17 3.76L16.18 18 12 14.9 7.82 18l1.35-5.98L4 8.26h5.91L12 2z" fill="currentColor"/>\n</svg>';
+                        }
+                    })();
+                    btn.addEventListener('click', function() {
+                        try {
+                            // Prefer to simulate the exact same action as clicking the menu item
+                            var menuBtn = document.querySelector('button[aria-controls="up-ai-toolkit:up-ai-toolkit-sidebar"]');
+                            if (menuBtn) {
+                                menuBtn.click();
+                                return;
+                            }
+                        } catch (e) {}
+                        try {
+                            // Fallbacks using edit-post store
+                            if (wp && wp.data && wp.data.dispatch) {
+                                var editPost = wp.data.dispatch('core/edit-post');
+                                // Try general sidebar with composed name (plugin/slug)
+                                if (editPost && editPost.openGeneralSidebar) {
+                                    editPost.openGeneralSidebar('up-ai-toolkit/up-ai-toolkit-sidebar');
+                                }
+                                // Last resort: openPluginSidebar if available
+                                if (editPost && editPost.openPluginSidebar) {
+                                    editPost.openPluginSidebar('up-ai-toolkit-sidebar');
+                                }
+                            }
+                        } catch (e) {}
+                    });
+                    previewBtn.insertAdjacentElement('afterend', btn);
+                    addedBtn = btn;
+
+                    // Inject minimal CSS for predictable icon sizing
+                    try {
+                        var css = '.upai-quick-toggle svg{width:16px;height:16px;display:block}.upai-quick-toggle{padding:2px;line-height:1}';
+                        var style = document.createElement('style');
+                        style.type = 'text/css';
+                        style.appendChild(document.createTextNode(css));
+                        document.head.appendChild(style);
+                        addedStyle = style;
+                    } catch(e) {}
+                } catch (e) {}
+            }, 400);
+            return function() {
+                try { clearInterval(interval); } catch (e) {}
+                try { if (addedBtn && addedBtn.parentNode) addedBtn.parentNode.removeChild(addedBtn); } catch (e) {}
+                try { if (addedStyle && addedStyle.parentNode) addedStyle.parentNode.removeChild(addedStyle); } catch (e) {}
+            };
+        }, []);
+
         /**
          * Modify the whole post coherently
          */
